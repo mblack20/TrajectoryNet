@@ -1,40 +1,22 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
+import cProfile
+import sys
 import time
-import math
+
 import numpy as np
 import tensorflow as tf
 from sklearn import preprocessing
-import os
-import inspect
-import sys
-import datetime
-import cProfile
-from enum import Enum
-from sklearn import metrics
-from sklearn.metrics import recall_score
-from sklearn.metrics import average_precision_score
-import threading
 from tensorflow.python.platform import flags
-from sklearn.metrics import confusion_matrix
-from tensorflow.python.client import timeline
 
-from customized_activations import maxout
-from customized_rnncell import NewGRUCell
-
+import Config
+import Data
 import Learning_rate
 import Monitor
-from param import RNNType
-from MyThread import MyThread
+from customized_rnncell import NewGRUCell
 from Log import Log
-from Evaluate import evaluate_accuracy, evaluate_stat, evaluate_confusion
-import Data
-import Config
-
-# for testing only
-import cProfile
-
+from MyThread import MyThread
+from param import RNNType
 
 # check num of parameters
 if len(sys.argv) < 2:
