@@ -96,6 +96,8 @@ y = np.load(dataPath+y_file)
 mmsi = np.load(dataPath+mmsi_file)
 
 # feature selection
+
+
 def filter_features(x):
     print("warning: not all featuers are used")
     x = x[:, :, 0:40]
@@ -106,6 +108,7 @@ def filter_features(x):
 
 def filter_classes(x, y, mmsi, cls):
     valid_index = np.concatenate([np.where(mmsi == i) for i in cls], axis=1)[0]
+
 
 num_features = x.shape[2]
 
@@ -121,7 +124,8 @@ val_vessel = conf.val_id
 if conf.testmode == "lobo":
     (train_index, test_index, valid_index) = Data.Data.splitDataset(mmsi[0], test_vessel, val_vessel)
 elif conf.testmode == "random":
-    (train_index, test_index, valid_index) = Data.Data.randomSplitDataset(mmsi[0], train_perc = conf.train_ratio, val_perc = conf.val_ratio)
+    (train_index, test_index, valid_index) = Data.Data.randomSplitDataset(
+        mmsi[0], train_perc=conf.train_ratio, val_perc=conf.val_ratio)
 
 print(train_index)
 
@@ -134,32 +138,36 @@ num_class = np.unique(y).size
 log = Log(task, logPath, num_class)
 monitor = Monitor.Monitor(loss=True, num_class=num_class)
 
+
 def encode_label(y):
     """encode label into a matrix based on the number of classes"""
     num_class = np.unique(y).size
-    if num_class > 2: # multi-class
+    if num_class > 2:  # multi-class
         lb = preprocessing.LabelBinarizer()
         lb.fit(range(num_class))
         labels = np.array([lb.transform(i) for i in y])
         #labels = lb.transform(y)
-    else: # 2-class
-    # the labels are stored in reserve in the numpy array
-    # fishing is labeled 0
-        Y0 = np.logical_not(y) * 1 # Y1 represents fishing
-        Y1 = y # Y0 represents non-fishing
+    else:  # 2-class
+        # the labels are stored in reserve in the numpy array
+        # fishing is labeled 0
+        Y0 = np.logical_not(y) * 1  # Y1 represents fishing
+        Y1 = y  # Y0 represents non-fishing
         labels = np.array([Y0, Y1])
-        labels = labels.transpose(1,2,0) # dim: [example; length; classes]
+        labels = labels.transpose(1, 2, 0)  # dim: [example; length; classes]
 
     return labels
 
-#labels = encode_label(y) # no need to encode y
+
+# labels = encode_label(y) # no need to encode y
 labels = y
-    
+
+
 def get_all_data(conf):
     """generate data for all vessels"""
     early = mmsi[1]
     X = x.transpose((1, 0, 2))
     return (X, labels, early)
+
 
 class VesselModel(object):
     """The vessel classification lstm model."""
@@ -180,11 +188,11 @@ class VesselModel(object):
         self._input_data = tf.placeholder(tf.float32, [exp_seq_len, self.batch_size, num_features], name="input-data")
 
         # target for one batch
-        self._targets = tf.placeholder(tf.int64, [self.batch_size, exp_seq_len], name = "y-target")
+        self._targets = tf.placeholder(tf.int64, [self.batch_size, exp_seq_len], name="y-target")
 
         # get the length of all training and test sequences
         if self.is_training:
-            self.seq_len = exp_seq_len*self.batch_size #sum(train_seq_len)
+            self.seq_len = exp_seq_len*self.batch_size  # sum(train_seq_len)
         elif self.is_validation:
             self.seq_len = sum(valid_seq_len)
         else:
@@ -197,17 +205,17 @@ class VesselModel(object):
             cell = self.get_multi_rnn_cell(rnn_cell)
 
         # what timesteps we want to stop at, notice it's different for each batch
-        self._early_stop = tf.placeholder(tf.int64, shape=[self.batch_size], name = "early-stop")
+        self._early_stop = tf.placeholder(tf.int64, shape=[self.batch_size], name="early-stop")
 
         self.set_initial_states(cell)
 
-        #with tf.name_scope("dropout") as scope:
+        # with tf.name_scope("dropout") as scope:
         #    if self.is_training and config.keep_prob < 1:
         #        self._input_data = tf.nn.dropout(self._input_data, config.keep_prob)
 
         outputs = []
         # Creates a recurrent neural network specified by RNNCell "cell
-        # inputs for rnn needs to be a list, each item being a timestep. 
+        # inputs for rnn needs to be a list, each item being a timestep.
         # Args:
         #    cell: An instance of RNNCell.
         #    inputs: A length T list of inputs, each a tensor of shape
@@ -227,7 +235,8 @@ class VesselModel(object):
         with tf.name_scope("rnn-outputs") as scope:
             self.get_outputs(cell)
 
-        self.valid_target = self.get_valid_sequence(tf.reshape(self._targets, [exp_seq_len * self.batch_size]), num_classes) # valid digit target
+        self.valid_target = self.get_valid_sequence(tf.reshape(
+            self._targets, [exp_seq_len * self.batch_size]), num_classes)  # valid digit target
         self.lstm_output = self.valid_output
 
         if deep_output:
@@ -237,11 +246,11 @@ class VesselModel(object):
                 softmaxb_dout = tf.get_variable("softmax_b_deepout", [self.higher_hidden_size])
                 self.valid_output = tf.sigmoid(tf.matmul(self.valid_output, softmax_wout) + softmaxb_dout)
                 if use_dropout:
-                    self.valid_output = tf.nn.dropout(self.valid_output, keep_prob = 0.5)
+                    self.valid_output = tf.nn.dropout(self.valid_output, keep_prob=0.5)
                 #softmax_wout2 = tf.get_variable("softmax_w_deepout2", [self.hidden_size, self.hidden_size])
                 #softmaxb_dout2 = tf.get_variable("softmax_b_deepout2", [self.hidden_size])
                 #self.valid_output = tf.matmul(self.valid_output, softmax_wout2) + softmaxb_dout2
-                #if use_dropout:
+                # if use_dropout:
                 #    self.valid_output = tf.nn.dropout(self.valid_output, keep_prob = 0.5)
 
         with tf.name_scope("softmax-W") as scope:
@@ -281,9 +290,10 @@ class VesselModel(object):
             self.y_hist_test = tf.summary.histogram("test-predictions", self._predictions)
             self.mse_summary_train = tf.summary.scalar("train-cross-entropy-cost", self._cost)
             self.mse_summary_test = tf.summary.scalar("test-cross-entropy-cost", self._cost)
-    
+
         with tf.name_scope("optimization") as scope:
-            self._train_op = tf.train.AdamOptimizer(self.learning_rate).minimize(self._cost, global_step=self.current_step)
+            self._train_op = tf.train.AdamOptimizer(self.learning_rate).minimize(
+                self._cost, global_step=self.current_step)
             #self._train_op = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self._cost, global_step=self.current_step)
 
     def get_rnn_cell(self):
@@ -293,7 +303,8 @@ class VesselModel(object):
             lstm_cell_bw = tf.contrib.rnn.LSTMCell(self.hidden_size, state_is_tuple=True, use_peepholes=conf.peephole)
             return (lstm_cell_fw, lstm_cell_bw)
         elif rnnType == RNNType.LSTM_u:
-            lstm_cell = rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1, state_is_tuple=True, orthogonal_scale_factor=conf.init_scale, initializer = weight_initializer)
+            lstm_cell = rnn_cell.BasicLSTMCell(self.hidden_size, forget_bias=1, state_is_tuple=True,
+                                               orthogonal_scale_factor=conf.init_scale, initializer=weight_initializer)
             return lstm_cell
         elif rnnType == RNNType.GRU:
             gru_cell = rnnCell(self.hidden_size, activation=activation_function)
@@ -307,11 +318,14 @@ class VesselModel(object):
         """Create multiple layers of rnn_cell based on RNN type"""
         if rnnType == RNNType.LSTM_b or rnnType == RNNType.GRU_b:
             (lstm_cell_fw, lstm_cell_bw) = rnn_cell
-            cell_fw = tf.contrib.rnn.MultiRNNCell([rnnCell(self.hidden_size, activation=activation_function) for _ in range(self.num_layers)])
-            cell_bw = tf.contrib.rnn.MultiRNNCell([rnnCell(self.hidden_size, activation=activation_function) for _ in range(self.num_layers)])
+            cell_fw = tf.contrib.rnn.MultiRNNCell(
+                [rnnCell(self.hidden_size, activation=activation_function) for _ in range(self.num_layers)])
+            cell_bw = tf.contrib.rnn.MultiRNNCell(
+                [rnnCell(self.hidden_size, activation=activation_function) for _ in range(self.num_layers)])
             return (lstm_cell_fw, lstm_cell_bw)
         elif rnnType == RNNType.LSTM_u or rnnType == RNNType.GRU:
-            cell = tf.contrib.rnn.MultiRNNCell([rnnCell(self.hidden_size, activation=activation_function) for _ in range(self.num_layers)])
+            cell = tf.contrib.rnn.MultiRNNCell(
+                [rnnCell(self.hidden_size, activation=activation_function) for _ in range(self.num_layers)])
             return cell
 
     def set_initial_states(self, cell):
@@ -331,26 +345,27 @@ class VesselModel(object):
 
     def get_outputs(self, cell):
         """ get output tensor of the RNN"""
-          # At: tensorflow/tensorflow/python/ops/rnn.py
-          # Args:
-          # Unlike `rnn`, the input `inputs` is not a Python list of `Tensors`.  Instead,
-          # it is a single `Tensor` where the maximum time is either the first or second
-          # dimension (see the parameter `time_major`).  The corresponding output is
-          # a single `Tensor` having the same number of time steps and batch size.
-          #
-          # If time_major == False (default), this must be a tensor of shape:
-          #    `[batch_size, max_time, input_size]`, or a nested tuple of such elements
-          # If time_major == True, this must be a tensor of shape:
-          #    `[max_time, batch_size, input_size]`, or a nested tuple of such elements
-          #
-          # Returns:
-          # If time_major == False (default), this will be a `Tensor` shaped:
-          #     `[batch_size, max_time, cell.output_size]`.
-          # If time_major == True, this will be a `Tensor` shaped:
-          #     `[max_time, batch_size, cell.output_size]`.
+        # At: tensorflow/tensorflow/python/ops/rnn.py
+        # Args:
+        # Unlike `rnn`, the input `inputs` is not a Python list of `Tensors`.  Instead,
+        # it is a single `Tensor` where the maximum time is either the first or second
+        # dimension (see the parameter `time_major`).  The corresponding output is
+        # a single `Tensor` having the same number of time steps and batch size.
+        #
+        # If time_major == False (default), this must be a tensor of shape:
+        #    `[batch_size, max_time, input_size]`, or a nested tuple of such elements
+        # If time_major == True, this must be a tensor of shape:
+        #    `[max_time, batch_size, input_size]`, or a nested tuple of such elements
+        #
+        # Returns:
+        # If time_major == False (default), this will be a `Tensor` shaped:
+        #     `[batch_size, max_time, cell.output_size]`.
+        # If time_major == True, this will be a `Tensor` shaped:
+        #     `[max_time, batch_size, cell.output_size]`.
         if rnnType == RNNType.LSTM_b or rnnType == RNNType.GRU_b:
             (cell_fw, cell_bw) = cell
-            self.outputs, self.state = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self._input_data, sequence_length=self._early_stop, initial_state_fw=self.initial_state_fw, initial_state_bw=self.initial_state_bw, time_major=True, dtype='float32')
+            self.outputs, self.state = tf.nn.bidirectional_dynamic_rnn(
+                cell_fw, cell_bw, self._input_data, sequence_length=self._early_stop, initial_state_fw=self.initial_state_fw, initial_state_bw=self.initial_state_bw, time_major=True, dtype='float32')
             output_fw, output_bw = self.outputs
             output_fw = tf.transpose(output_fw, perm=[1, 0, 2])
             output_bw = tf.transpose(output_bw, perm=[1, 0, 2])
@@ -360,11 +375,13 @@ class VesselModel(object):
             # However, this is not the true output sequence, since padding added a number of empty elements
             # Extra padding elements should be removed from the output sequence.
             # Here first concatenate all vessels into one long sequence, including paddings
-            self.output = tf.reshape(tf.concat(axis=0, values=outputs), [exp_seq_len * self.batch_size, self.hidden_size*2])
+            self.output = tf.reshape(tf.concat(axis=0, values=outputs), [
+                                     exp_seq_len * self.batch_size, self.hidden_size*2])
             # Remove padding here
             self.valid_output = self.get_valid_sequence(self.output, self.hidden_size*2)
         elif rnnType == RNNType.LSTM_u or rnnType == RNNType.GRU:
-            self.outputs, self.state = tf.nn.dynamic_rnn(cell, self._input_data, sequence_length=self._early_stop, initial_state=self._initial_state, time_major=True, dtype='float32')
+            self.outputs, self.state = tf.nn.dynamic_rnn(
+                cell, self._input_data, sequence_length=self._early_stop, initial_state=self._initial_state, time_major=True, dtype='float32')
             # This is a workaround with tf.reshape().
             # To make data with the same vessel continguous after reshape,
             # we need to transpose it first.
@@ -374,7 +391,8 @@ class VesselModel(object):
             # However, this is not the true output sequence, since padding added a number of empty elements
             # Extra padding elements should be removed from the output sequence.
             # Here first concatenate all vessels into one long sequence, including paddings
-            self.output = tf.reshape(tf.concat(axis=0, values=outputs), [exp_seq_len * self.batch_size, self.hidden_size])
+            self.output = tf.reshape(tf.concat(axis=0, values=outputs), [
+                                     exp_seq_len * self.batch_size, self.hidden_size])
             # Remove padding here
             self.valid_output = self.get_valid_sequence(self.output, self.hidden_size)
 
@@ -398,13 +416,12 @@ class VesselModel(object):
         valid_sequence_list = []
         for i in range(self.batch_size):
             if len(tf.Tensor.get_shape(seq)) == 2:
-                sub_seq = tf.slice(seq, [exp_seq_len*i, 0], [ stop[i], feature_size])
+                sub_seq = tf.slice(seq, [exp_seq_len*i, 0], [stop[i], feature_size])
             else:
                 sub_seq = tf.slice(seq, [exp_seq_len*i], [stop[i]])
             valid_sequence_list.append(sub_seq)
         valid_sequence = tf.concat(axis=0, values=valid_sequence_list)
         return valid_sequence
-
 
     def getTensorShape(this, tensor):
         return tf.Tensor.get_shape(tensor)
@@ -453,6 +470,7 @@ class VesselModel(object):
     def final_state(self):
         return self._final_state
 
+
 def test_model(sess, minibatch):
     # test and validate model
     if conf.test_mode:
@@ -472,11 +490,11 @@ def test_model(sess, minibatch):
     result_test = t_test.get_result()
     t_val.join()
     result_val = t_val.get_result()
-    
+
     result = result_train + result_test + result_val
     monitor.new(result, minibatch)
     return result
-    
+
 
 def run_batch(session, m, data, eval_op, minibatch):
     """Runs the model on the given data."""
@@ -489,9 +507,9 @@ def run_batch(session, m, data, eval_op, minibatch):
     correct = []
 
     for batch in range(epoch_size):
-        x_batch = x[:,batch*m.batch_size : (batch+1)*m.batch_size,:]
-        y_batch = y[batch*m.batch_size : (batch+1)*m.batch_size,:]
-        e_batch = e_stop[batch*m.batch_size : (batch+1)*m.batch_size]
+        x_batch = x[:, batch*m.batch_size: (batch+1)*m.batch_size, :]
+        y_batch = y[batch*m.batch_size: (batch+1)*m.batch_size, :]
+        e_batch = e_stop[batch*m.batch_size: (batch+1)*m.batch_size]
 
         temp_dict = {m.input_data: x_batch}
         temp_dict.update({m.targets: y_batch})
@@ -504,36 +522,37 @@ def run_batch(session, m, data, eval_op, minibatch):
 
             _ = session.run([eval_op], feed_dict=temp_dict)
 
-            print("minibatch {0}: {1}/{2}, lr={3:0.5f}\r".format(minibatch, batch, epoch_size,m.learning_rate),)
+            print("minibatch {0}: {1}/{2}, lr={3:0.5f}\r".format(minibatch, batch, epoch_size, m.learning_rate),)
             lr.increase_global_step()
             # track stats every 10 minibatches
-            if minibatch % evaluate_freq  == 0:
-                result = test_model(session, minibatch) # recursive function
+            if minibatch % evaluate_freq == 0:
+                result = test_model(session, minibatch)  # recursive function
                 log.write(result, minibatch)
             minibatch += 1
         # test the model
         else:
-            cost, confusion, accuracy, _ = session.run([m.cost, m.confusion_matrix, m._accuracy, eval_op], feed_dict=temp_dict)
+            cost, confusion, accuracy, _ = session.run(
+                [m.cost, m.confusion_matrix, m._accuracy, eval_op], feed_dict=temp_dict)
 
             # keep results for this minibatch
             costs.append(cost)
             correct.append(accuracy * sum(e_batch))
-    
+
             # print test confusion matrix
             if not m.is_training and not m.is_validation:
-                 print(confusion)
-                 # output predictions in test mode
-                 if conf.test_mode:
-                     pred = session.run([m._prob_predictions], feed_dict=temp_dict)
-                     pred = np.array(pred)
-                     np.set_printoptions(threshold=np.nan)
-                     print(pred.shape)
-                     print(pred)
-                     #results = np.column_stack((tar, pred))
-                     #np.savetxt("results/prediction.result", pred)#, fmt='%.3f')
-                     print("output target and predictions to file prediction.csv")
-                     exit()
-    
+                print(confusion)
+                # output predictions in test mode
+                if conf.test_mode:
+                    pred = session.run([m._prob_predictions], feed_dict=temp_dict)
+                    pred = np.array(pred)
+                    np.set_printoptions(threshold=np.nan)
+                    print(pred.shape)
+                    print(pred)
+                    #results = np.column_stack((tar, pred))
+                    # np.savetxt("results/prediction.result", pred)#, fmt='%.3f')
+                    print("output target and predictions to file prediction.csv")
+                    exit()
+
             if batch == epoch_size - 1:
                 accuracy = sum(correct) / float(sum(e_stop))
                 return(sum(costs)/float(epoch_size), accuracy)
@@ -541,22 +560,25 @@ def run_batch(session, m, data, eval_op, minibatch):
     # training: keep track of minibatch number
     return(minibatch)
 
+
 def getPredFileName(minibatch):
     """get the output of the prediction files"""
     return (logPath+str(test_vessel[0])+'/pred-'+task + str(minibatch)+'.csv')
 
+
 def getLearnedParameters(param_name='model/bidirectional_rnn/fw/gru_cell/candidate/weights:0', filename='learned_embedding'):
-    #print(tf.trainable_variables())
+    # print(tf.trainable_variables())
     var = [v for v in tf.trainable_variables() if v.name == param_name][0]
     x = var.eval()
     np.savetxt(filename, x)
 
+
 def main(_):
     now = time.time()
     # get config
-    train_conf = Config.TrainingConfig(is_training = True, is_validation = False, batch_size = conf.batch_size)
-    test_conf = Config.TrainingConfig(is_training = False, is_validation = False, batch_size = len(test_index))
-    valid_conf = Config.TrainingConfig(is_training = False, is_validation = True, batch_size = len(valid_index))
+    train_conf = Config.TrainingConfig(is_training=True, is_validation=False, batch_size=conf.batch_size)
+    test_conf = Config.TrainingConfig(is_training=False, is_validation=False, batch_size=len(test_index))
+    valid_conf = Config.TrainingConfig(is_training=False, is_validation=True, batch_size=len(valid_index))
 
     # prepare all data to evaluate
     with tf.Session() as session:
@@ -566,34 +588,34 @@ def main(_):
     np.random.shuffle(train_index)
 
     # specify training and test vessels
-    X_train = X_all[:,train_index,:]
-    y_train = Y_all[train_index,:]
+    X_train = X_all[:, train_index, :]
+    y_train = Y_all[train_index, :]
     stop_train = e_stop_all[train_index]
 
-    #print(X_train.shape)
+    # print(X_train.shape)
     #(X_train, y_train, stop_train) = Data.Data.upsample((X_train, y_train, stop_train), cls=1, times=4)
-    #print(X_train.shape)
+    # print(X_train.shape)
 
-    perm = np.random.permutation(X_train.shape[1])    
-    X_train = X_all[:,perm,:]
-    y_train = Y_all[perm,:]
+    perm = np.random.permutation(X_train.shape[1])
+    X_train = X_all[:, perm, :]
+    y_train = Y_all[perm, :]
     stop_train = e_stop_all[perm]
 
-    X_test = X_all[:,test_index,:]
-    y_test = Y_all[test_index,:]
+    X_test = X_all[:, test_index, :]
+    y_test = Y_all[test_index, :]
     stop_test = e_stop_all[test_index]
 
-    X_valid = X_all[:,valid_index,:]
-    y_valid = Y_all[valid_index,:]
+    X_valid = X_all[:, valid_index, :]
+    y_valid = Y_all[valid_index, :]
     stop_valid = e_stop_all[valid_index]
 
     # delete variables to save RAM
     del X_all
     del Y_all
     del e_stop_all
-     
+
     global train_data
-    train_data  = (X_train, y_train, stop_train)
+    train_data = (X_train, y_train, stop_train)
     global test_data
     test_data = (X_test, y_test, stop_test)
     global val_data
@@ -601,24 +623,21 @@ def main(_):
 
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = 0.1
-    config.intra_op_parallelism_threads=conf.num_threads
+    config.intra_op_parallelism_threads = conf.num_threads
 #    config.log_device_placement=True
     session = tf.Session(config=config)
     minibatch = 0
 
-
     with tf.Graph().as_default(), session as sess:
         tf.set_random_seed(0)
 
-
         if weight_initializer == "uniform":
-          initializer = tf.random_uniform_initializer(0, conf.init_scale)
+            initializer = tf.random_uniform_initializer(0, conf.init_scale)
         elif weight_initializer == "orthogonal":
-          initializer = tf.orthogonal_initializer(gain=conf.init_scale)
+            initializer = tf.orthogonal_initializer(gain=conf.init_scale)
         else:
-          print("Error: wrong weight initializer")
-          exit()
-
+            print("Error: wrong weight initializer")
+            exit()
 
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             global m
@@ -639,7 +658,7 @@ def main(_):
             writer = tf.summary.FileWriter(logPath+"tf-logs", sess.graph_def)
 
         if not conf.restore:
-            tf.global_variables_initializer().run()     #initialize all variables in the model
+            tf.global_variables_initializer().run()  # initialize all variables in the model
         else:
             saver.restore(sess, dataPath+task)
             print("Model restored.")
@@ -664,15 +683,16 @@ def main(_):
     difference = int(later - now)
     print('time elapsed: {:} seconds'.format(difference))
 
+
 def prof(main=None):
     f = flags.FLAGS
     f._parse_flags()
     main = main or sys.modules['__main__'].main
 
-    profile=cProfile.Profile()
+    profile = cProfile.Profile()
     profile.run('main(sys.argv)')
-    kProfile=lsprofcalltree.KCacheGrind(profile)
-    kFile=open('profile','w+')
+    kProfile = lsprofcalltree.KCacheGrind(profile)
+    kFile = open('profile', 'w+')
     kProfile.output(kFile)
     kFile.close()
 

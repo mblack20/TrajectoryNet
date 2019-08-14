@@ -1,4 +1,6 @@
-import cPickle, gzip, numpy
+import cPickle
+import gzip
+import numpy
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -19,12 +21,14 @@ train_set = genfromtxt('/users/grad/xjiang/code/'+str(vesselnum)+'/trainoutput-9
 test_set = genfromtxt('/users/grad/xjiang/code/'+str(vesselnum)+'/testoutput-99.csv', delimiter=',')
 valid_set = genfromtxt('/users/grad/xjiang/code/'+str(vesselnum)+'/valoutput-99.csv', delimiter=',')
 
+
 def get_in_out(data):
-    x = data[:,0:(data.shape[1]-2)]
+    x = data[:, 0:(data.shape[1]-2)]
     y = data[:, (data.shape[1]-2):(data.shape[1]-1)]
     y = y.astype(int)
     y = y.flatten()
-    return (x,y)
+    return (x, y)
+
 
 train_x, train_y = get_in_out(train_set)
 test_x, test_y = get_in_out(test_set)

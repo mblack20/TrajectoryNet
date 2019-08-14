@@ -1,5 +1,6 @@
 import json
 
+
 class DataConfig(object):
     def __init__(self, confile='config.json'):
         dconf = json.load(open(confile))
@@ -24,8 +25,10 @@ class DataConfig(object):
         self.activation = dconf["activation"]
         self.test_mode = dconf["test_mode"]
 
+
 class TrainingConfig(object):
     """ Config for genetic purpose."""
+
     def __init__(self, is_training, is_validation, batch_size):
         self.is_training = is_training
         self.is_validation = is_validation
