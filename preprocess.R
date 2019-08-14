@@ -20,20 +20,20 @@ EqualWidth <- function(x,n){
   print(paste0("min:",v_min))
   print(paste0("max:",v_max))
   print(paste0("interval:",interval))
-  
+
   bin <- floor((x-v_min)/interval) + 1
   member <- (x-v_min)%%interval / interval
   bin[bin==(n+1)] <- n
-  
+
   mm <- matrix(0, length(x), n)
   encoding <- apply(mm, c(1, 2), function(x) 0)
   for(i in c(1:length(x))) {
       encoding[i,bin[i]] <- 1
   }
   encoding <- data.frame(encoding)
-  
+
   stopifnot(sum(encoding)==nrow(encoding))
-  
+
   encoding
 }
 
@@ -46,7 +46,7 @@ PositionCoding <- function(x,n){
   v_min <- min(x)
   v_max <- max(x)
   interval <- (v_max - v_min)
-  
+
   normalized <- (x-v_min)/interval
 
   mm <- matrix(0, length(x), n)
@@ -55,7 +55,7 @@ PositionCoding <- function(x,n){
     encoding[,i] <- dnorm(normalized, mean=interval/n*(i-1), sd=interval/n)
   }
   encoding <- data.frame(encoding)
-  
+
 
   encoding
 }
@@ -71,12 +71,12 @@ toNominal <- function(x,n){
   print(paste0("min:",v_min))
   print(paste0("max:",v_max))
   print(paste0("interval:",interval))
-  
+
   bin <- floor((x-v_min)/interval)
   bin[bin==(n)] <- n-1
-  
+
   encoding <- data.frame(bin)
-  
+
   encoding
 }
 
@@ -85,11 +85,11 @@ toNominal <- function(x,n){
 HampelFilter <- function (x, k,t0=3){
   min_v <- quantile(x, 0)
   max_v <- quantile(x, 0.95)
-  
+
   n <- length(x)
   y <- x
   ind <- c()
-  
+
   for (i in (k + 1):(n-k)){
     if (i %% 10000 == 0) {print(i)}
     if (x[i]<max_v && x[i]>min_v){
@@ -99,10 +99,10 @@ HampelFilter <- function (x, k,t0=3){
     y[i] <- median(x[(i - k):(i + k)])
     if (y[i] > max_v) {y[i] <- max_v}
     if (y[i] < min_v) {y[i] <- min_v}
-    
-    
+
+
   }
-  
+
   list(y = y, ind = ind)
 }
 
@@ -110,13 +110,13 @@ HampelFilter <- function (x, k,t0=3){
 HampelFilter2 <- function (x, k,t0=3){
   min_v <- quantile(x, 0.05)
   max_v <- quantile(x, 0.95)
-  
+
   n <- length(x)
   y <- x
   ind <- c()
-  
+
   for (i in (k + 1):(n-k)){
-    
+
     stdev <- sd(x[(i - k):(i + k)])
     mdn <-  median(x[(i - k):(i + k)])
     if (abs(x[i]-mdn)<3*stdev){
@@ -124,13 +124,13 @@ HampelFilter2 <- function (x, k,t0=3){
     }
     ind <- c(ind, i)
     y[i] <- median(x[(i - k):(i + k)])
-    
+
     if (y[i] > max_v) {y[i] <- max_v}
     if (y[i] < min_v) {y[i] <- min_v}
-    
-    
+
+
   }
-  
+
   list(y = y, ind = ind)
 }
 
@@ -139,7 +139,7 @@ lag_apply <- function(x, n, callback){
   result = rep(0, k);
   for(i in 1 : (k - n + 1)){
     result[i] <- callback(x[i :  (i + n -1)]);
-  }    
+  }
   return(result);
 }
 
